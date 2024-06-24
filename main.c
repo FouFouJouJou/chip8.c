@@ -4,14 +4,14 @@
 #include <raylib.h>
 #include <math.h>
 
-#define WIDTH 800
-#define HEIGHT 800
+#define WIDTH 640
+#define HEIGHT 320
 
-#define PIXELS_PER_ROW 20
-#define PIXELS_PER_COL 20
+#define PIXELS_PER_ROW 64
+#define PIXELS_PER_COL 32
 
-#define PIXEL_WIDTH WIDTH/PIXELS_PER_COL
-#define PIXEL_HEIGHT HEIGHT/PIXELS_PER_ROW
+#define PIXEL_WIDTH WIDTH/PIXELS_PER_ROW
+#define PIXEL_HEIGHT HEIGHT/PIXELS_PER_COL
 
 
 #define FPS 60
@@ -19,11 +19,13 @@
 #define TOTAL_PIXELS (WIDTH*HEIGHT)/(PIXEL_WIDTH*PIXEL_HEIGHT)
 
 void set_pixel(uint8_t pixels[], uint16_t pos_x, uint16_t pos_y, uint8_t bit) {
+  printf("%d %d %d\n", pos_x, pos_y, (pos_y*(PIXELS_PER_ROW))+pos_x);
   pixels[(pos_y*PIXELS_PER_ROW)+pos_x]=bit;
 }
 
 void invert_pixel(uint8_t pixels[], uint16_t pos_x, uint16_t pos_y) {
-  pixels[(pos_y*PIXELS_PER_ROW)+pos_x]=!pixels[(pos_y*PIXELS_PER_ROW)+pos_x];
+  printf("%d %d %d\n", pos_x, pos_y, (pos_y*(PIXELS_PER_ROW))+pos_x);
+  pixels[(pos_y*(PIXELS_PER_ROW))+pos_x]=!pixels[(pos_y*(PIXELS_PER_ROW))+pos_x];
 }
 
 void init_pixels(uint8_t pixels[]) {
@@ -33,7 +35,7 @@ void init_pixels(uint8_t pixels[]) {
 }
 
 void init(uint8_t pixels[]) {
-  InitWindow(WIDTH, HEIGHT, "raylib [core] example - basic window");
+  InitWindow(WIDTH, HEIGHT, "Chip-8 emulator");
   init_pixels(pixels);
   SetTargetFPS(FPS);
 }
@@ -41,7 +43,7 @@ void init(uint8_t pixels[]) {
 void render(uint8_t pixels[]) {
   BeginDrawing();
   for(int i=0; i<TOTAL_PIXELS; ++i) {
-    uint16_t pos_x=(i%(PIXELS_PER_COL))*PIXEL_WIDTH;
+    uint16_t pos_x=(i%(PIXELS_PER_ROW))*PIXEL_WIDTH;
     uint16_t pos_y=(i/(PIXELS_PER_ROW))*PIXEL_HEIGHT;
     DrawLine(pos_x, 0, pos_x, HEIGHT, GRAY);
     DrawLine(0, pos_y, WIDTH, pos_y, GRAY);
@@ -65,6 +67,7 @@ int main(void) {
   uint8_t pixels[TOTAL_PIXELS]={0};
   init(pixels);
   int mouse_x=0, mouse_y=0;
+  printf("%d\n", TOTAL_PIXELS);
   while (!WindowShouldClose()) {
     if(IsKeyPressed('R')){
       init_pixels(pixels);
