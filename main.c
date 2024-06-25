@@ -23,6 +23,7 @@
 #define FPS 60
 #define INSTRUCTION_SIZE 16
 
+
 struct chip8_t {
   uint8_t v[16];
   uint16_t i, pc;
@@ -31,6 +32,8 @@ struct chip8_t {
   uint8_t ram[1<<12];
   uint8_t frame_buffer[SCREEN_HEIGHT*SCREEN_WIDTH];
 };
+
+typedef void (*decode_subroutine)(struct chip8_t *chip8, uint16_t instruction);
 
 void set_pixel(uint8_t pixels[], uint16_t pos_x, uint16_t pos_y, uint8_t bit) {
   printf("%d %d %d\n", pos_x, pos_y, (pos_y*(PIXELS_PER_ROW))+pos_x);
@@ -112,6 +115,10 @@ size_t boot(struct chip8_t *const chip8, const char *const rom_name) {
   return bytes;
 }
 
+void increment_pc(uint16_t *const pc, uint16_t increment) {
+  *pc+=(increment*INSTRUCTION_SIZE);
+}
+
 uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
   return (instruction >> ((start_bit-1)*4)) & (0xFFFF >> (4-size)*4);
 }
@@ -121,7 +128,7 @@ void exec_op_0(struct chip8_t *chip8, uint16_t instruction) {
   if(remainding_bits == 0x0e0) {
     printf("cls\n");
     memset(chip8->frame_buffer, 0, SCREEN_WIDTH*SCREEN_HEIGHT);
-    chip8->pc++;
+    increment_pc(&(chip8->pc), 1);
   }
   else if(remainding_bits == 0x0ee) {
     chip8->pc=chip8->stack[chip8->sp];
@@ -142,7 +149,7 @@ void exec_op_1(struct chip8_t *chip8, uint16_t instruction) {
 
 void exec_op_2(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t remainding_bits=get_4_bits(instruction, 3, 3);
-  chip8->sp+=1;
+  increment_pc(&(chip8->pc), 1);
   chip8->stack[chip8->sp]=chip8->pc;
   chip8->pc=remainding_bits;
   printf("call %d\n", chip8->pc);
@@ -152,9 +159,9 @@ void exec_op_3(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t register_x=get_4_bits(instruction, 3, 1);
   uint8_t value=get_4_bits(instruction, 2, 2);
   if(chip8->v[register_x] == value) {
-    chip8->pc+=2;
+    increment_pc(&(chip8->pc), 2);
   }
-  else chip8->pc+=1;
+  else increment_pc(&(chip8->pc), 1);
   printf("se V%d, %x\n", register_x, value);
 }
 
@@ -162,9 +169,9 @@ void exec_op_4(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t register_x=get_4_bits(instruction, 3, 1);
   uint8_t value=get_4_bits(instruction, 2, 2);
   if(chip8->v[register_x] != value) {
-    chip8->pc+=2;
+    increment_pc(&(chip8->pc), 2);
   }
-  else chip8->pc+=1;
+  else increment_pc(&(chip8->pc), 1);
   printf("sne V%d, %x\n", register_x, value);
 }
 
@@ -174,9 +181,10 @@ void exec_op_5(struct chip8_t *chip8, uint16_t instruction) {
   printf("sne V%d, %x\n", register_x, value);
 
   if(chip8->v[register_x] != value) {
-    chip8->pc+=2;
+    increment_pc(&(chip8->pc), 2);
   }
-  else chip8->pc+=1;
+  else
+    increment_pc(&(chip8->pc), 1);
 }
 
 void exec_op_6(struct chip8_t *chip8, uint16_t instruction) {
@@ -184,7 +192,7 @@ void exec_op_6(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t value=get_4_bits(instruction, 2, 2);
   chip8->v[register_x]=value;
   printf("mov V%d, %d\n", register_x, value);
-  chip8->pc+=1;
+  increment_pc(&(chip8->pc), 1);
 }
 
 void exec_op_7(struct chip8_t *chip8, uint16_t instruction) {
@@ -192,7 +200,7 @@ void exec_op_7(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t value=get_4_bits(instruction, 2, 2);
   chip8->v[register_x]+=value;
   printf("add V%d, %d\n", register_x, value);
-  chip8->pc+=1;
+  increment_pc(&(chip8->pc), 1);
 }
 
 void exec_op_8(struct chip8_t *chip8, uint16_t instruction) {
@@ -203,51 +211,50 @@ void exec_op_8(struct chip8_t *chip8, uint16_t instruction) {
     case 0:
       chip8->v[register_x]=chip8->v[register_y];
       printf("ld V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 1:
       chip8->v[register_x]|=chip8->v[register_y];
       printf("or V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 2:
       chip8->v[register_x]&=chip8->v[register_y];
       printf("and V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 3:
       chip8->v[register_x]^=chip8->v[register_y];
       printf("xor V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 4:
       uint16_t result=chip8->v[register_x]+chip8->v[register_y];
       chip8->v[0xF]=(result>255);
       chip8->v[register_x]=result;
       printf("add V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 5:
       chip8->v[0xF]=(chip8->v[register_x]>chip8->v[register_y]);
       chip8->v[register_x]-=chip8->v[register_y];
       printf("sub V%d, V%d", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 6:
       chip8->v[0xF]=(chip8->v[register_x] & 0x01);
       chip8->v[register_x]/=2;
       printf("shr V%d\n", register_x);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 7:
       chip8->v[0xF]=(chip8->v[register_y]>chip8->v[register_x]);
       chip8->v[register_x]=chip8->v[register_y]-chip8->v[register_x];
       printf("subn V%d, V%d\n", register_x, register_y);
-      chip8->pc+=1;
+      increment_pc(&(chip8->pc), 1);
       break;
     case 0xe:
-      chip8->pc+=(chip8->v[register_x] != chip8->v[register_y]) ? 2 : 1;
-      chip8->v[register_x]*=2;
+      increment_pc(&(chip8->pc), (chip8->v[register_x] != chip8->v[register_y]) ? 2 : 1);
       printf("shl V%d\n", register_x);
       break;
   }
@@ -257,19 +264,19 @@ void exec_op_9(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t register_x=get_4_bits(instruction, 3, 1);
   uint8_t register_y=get_4_bits(instruction, 2, 1);
   printf("sne V%d, V%d\n", register_x, register_y);
-  chip8->pc+=(chip8->v[register_x] != chip8->v[register_y]) ? 2 : 1;
+  increment_pc(&(chip8->pc), (chip8->v[register_x] != chip8->v[register_y]) ? 2 : 1);
 }
 
 void exec_op_a(struct chip8_t *chip8, uint16_t instruction) {
   uint16_t addr=get_4_bits(instruction, 1, 3);
   chip8->i=addr;
   printf("ld I, %d\n", addr);
-  chip8->pc+=1;
+  increment_pc(&(chip8->pc), 1);
 }
 
 void exec_op_b(struct chip8_t *chip8, uint16_t instruction) {
   uint16_t addr=get_4_bits(instruction, 1, 3);
-  chip8->pc+=chip8->v[0]+addr;
+  increment_pc(&(chip8->pc), chip8->v[0]+addr);
   printf("jp V0, %d\n", chip8->pc);
 }
 
@@ -278,69 +285,31 @@ void exec_op_c(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t value=get_4_bits(instruction, 2, 2);
   uint8_t random_value=GetRandomValue(0, 255);
   chip8->v[register_x]=random_value & value;
-  chip8->pc+=1;
+  increment_pc(&(chip8->pc), 1);
   printf("rnd V%d, %x\n", register_x, random_value);
 }
 
 // TODO
-void exec_op_d(struct chip8_t *chip8, uint16_t instruction) {}
-void exec_op_e(struct chip8_t *chip8, uint16_t instruction) {}
-void exec_op_f(struct chip8_t *chip8, uint16_t instruction) {}
+void exec_op_d(struct chip8_t *chip8, uint16_t instruction) {
+  printf("d\n");
+}
+void exec_op_e(struct chip8_t *chip8, uint16_t instruction) {
+  printf("e\n");
+}
+void exec_op_f(struct chip8_t *chip8, uint16_t instruction) {
+  printf("f\n");
+}
 
 void cycle(struct chip8_t *const chip8) {
-  uint16_t instruction=(chip8->ram[chip8->pc]<<((INSTRUCTION_SIZE)/2)) | chip8->ram[chip8->pc+1];
-  switch(get_4_bits(instruction, 4, 1)) {
-    case 0:
-      exec_op_0(chip8, instruction);
-      break;
-    case 1:
-      exec_op_1(chip8, instruction);
-      break;
-    case 2:
-      exec_op_2(chip8, instruction);
-      break;
-    case 3:
-      exec_op_3(chip8, instruction);
-      break;
-    case 4:
-      exec_op_4(chip8, instruction);
-      break;
-    case 5:
-      exec_op_5(chip8, instruction);
-      break;
-    case 6:
-      exec_op_6(chip8, instruction);
-      break;
-    case 7:
-      printf("7 opcode\n");
-      break;
-    case 8:
-      exec_op_8(chip8, instruction);
-      break;
-    case 9:
-      exec_op_9(chip8, instruction);
-      break;
-    case 0xa:
-      printf("0xa opcode\n");
-      break;
-    case 0xb:
-      printf("0xb opcode\n");
-      break;
-    case 0xc:
-      printf("0xc opcode\n");
-      break;
-    case 0xd:
-      printf("0xd opcode\n");
-      break;
-    case 0xe:
-      printf("0xe opcode\n");
-      break;
-    case 0xf:
-      printf("0xf opcode\n");
-      break;
-    default:
-      exit(81);
-  }
+  uint16_t instruction=(chip8->ram[(chip8->pc)]<<((INSTRUCTION_SIZE)/2)) 
+	  | chip8->ram[(chip8->pc)+1];
+  decode_subroutine routines[16]={
+    exec_op_0 ,exec_op_1 ,exec_op_2 ,exec_op_3
+    ,exec_op_4 ,exec_op_5 ,exec_op_6 ,exec_op_7
+    ,exec_op_8 ,exec_op_9 ,exec_op_a ,exec_op_b
+    ,exec_op_c ,exec_op_d ,exec_op_e ,exec_op_f
+  };
+  routines[get_4_bits(instruction, 4, 1)](chip8, instruction);
 }
 
 
