@@ -10,20 +10,21 @@
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
-#define SCALE 10
+#define SCALE 15
 #define WIDTH SCALE*SCREEN_WIDTH
 #define HEIGHT SCALE*SCREEN_HEIGHT
 
 #define PIXELS_PER_ROW 64
 #define PIXELS_PER_COL 32
+#define PADDING 1
 #define PIXEL_WIDTH WIDTH/PIXELS_PER_ROW
 #define PIXEL_HEIGHT HEIGHT/PIXELS_PER_COL
 #define TOTAL_PIXELS (WIDTH*HEIGHT)/(PIXEL_WIDTH*PIXEL_HEIGHT)
+#define INSTRUCTION_SIZE 2
 
 #define FPS 60
-#define INSTRUCTION_SIZE 16
 
-
+// TODO: convert registers to memory pointers
 struct chip8_t {
   uint8_t v[16];
   uint16_t i, pc;
@@ -31,6 +32,11 @@ struct chip8_t {
   uint16_t stack[12];
   uint8_t ram[1<<12];
   uint8_t frame_buffer[SCREEN_HEIGHT*SCREEN_WIDTH];
+  uint8_t keypad[16];
+  //uint16_t *i, *pc, *stack; 
+  //uint8_t *sp, *dt, *st;
+  //uint16_t *v1, *v2, *v3, *v4, *v5, *v6, *v7, *v8, *v9, *va, *vb, *vc, *vd, *ve, *vf;
+  //uint8_t *v_regs, *frame_buffer;
 };
 
 typedef void (*decode_subroutine)(struct chip8_t *chip8, uint16_t instruction);
@@ -55,13 +61,11 @@ void render(uint8_t pixels[]) {
   for(int i=0; i<TOTAL_PIXELS; ++i) {
     uint16_t pos_x=(i%(PIXELS_PER_ROW))*PIXEL_WIDTH;
     uint16_t pos_y=(i/(PIXELS_PER_ROW))*PIXEL_HEIGHT;
-    DrawLine(pos_x, 0, pos_x, HEIGHT, GRAY);
-    DrawLine(0, pos_y, WIDTH, pos_y, GRAY);
     DrawRectangle(
       pos_x
-      ,pos_y
-      , PIXEL_WIDTH
-      , PIXEL_HEIGHT
+      , pos_y
+      , PIXEL_WIDTH-(PADDING)
+      , PIXEL_HEIGHT-(PADDING)
       , pixels[i] ? WHITE : BLACK
     );
   }
@@ -73,22 +77,29 @@ uint8_t exit_() {
   return EXIT_SUCCESS;
 }
 
-size_t read_file(const char *const file_name, char *buffer) {
+size_t read_file(const char *const file_name, uint8_t *buffer) {
   int fd=open(file_name, O_RDONLY);
   if(fd == -1) exit(80);
   off_t raw_bytes=lseek(fd, 0, SEEK_END);
   lseek(fd, 0, SEEK_SET);
   ssize_t bytes_read=read(fd, buffer, raw_bytes);
   buffer[bytes_read]='\0';
+  for(int i=0; i<bytes_read; ++i) {
+    if(i % 16 == 0) printf("\n");
+    printf("%2x ", buffer[i]);
+  }
+  printf("\n");
   close(fd);
   return bytes_read;
 }
 
 size_t boot(struct chip8_t *const chip8, const char *const rom_name) {
+  //chip8->pc=chip8->memory+ORG;
   chip8->pc=ORG;
   chip8->sp=0;
   chip8->dt=chip8->st=0;
   memset(chip8->frame_buffer, 0, SCREEN_WIDTH*SCREEN_HEIGHT);
+  memset(chip8->keypad, 0, 16);
   uint8_t fonts[5*16] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -116,7 +127,7 @@ size_t boot(struct chip8_t *const chip8, const char *const rom_name) {
 }
 
 void increment_pc(uint16_t *const pc, uint16_t increment) {
-  *pc+=(increment*INSTRUCTION_SIZE);
+  (*pc)+=(increment*INSTRUCTION_SIZE);
 }
 
 uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
@@ -124,11 +135,11 @@ uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
 }
 
 void exec_op_0(struct chip8_t *chip8, uint16_t instruction) {
-  uint32_t remainding_bits=get_4_bits(instruction, 3, 3);
+  uint32_t remainding_bits=get_4_bits(instruction, 1, 3);
   if(remainding_bits == 0x0e0) {
-    printf("cls\n");
     memset(chip8->frame_buffer, 0, SCREEN_WIDTH*SCREEN_HEIGHT);
     increment_pc(&(chip8->pc), 1);
+    printf("cls\n");
   }
   else if(remainding_bits == 0x0ee) {
     chip8->pc=chip8->stack[chip8->sp];
@@ -137,18 +148,18 @@ void exec_op_0(struct chip8_t *chip8, uint16_t instruction) {
   }
   else {
     chip8->pc=remainding_bits;
-    printf("sys %d\n", chip8->pc);
+    printf("sys 0x%04X\n", chip8->pc);
   }
 }
 
 void exec_op_1(struct chip8_t *chip8, uint16_t instruction) {
-  uint32_t remainding_bits=get_4_bits(instruction, 3, 3);
+  uint16_t remainding_bits=get_4_bits(instruction, 1, 3);
   chip8->pc=remainding_bits;
-  printf("jp %d\n", chip8->pc);
+  printf("jp 0x%04X\n", chip8->pc);
 }
 
 void exec_op_2(struct chip8_t *chip8, uint16_t instruction) {
-  uint32_t remainding_bits=get_4_bits(instruction, 3, 3);
+  uint32_t remainding_bits=get_4_bits(instruction, 1, 3);
   increment_pc(&(chip8->pc), 1);
   chip8->stack[chip8->sp]=chip8->pc;
   chip8->pc=remainding_bits;
@@ -157,28 +168,28 @@ void exec_op_2(struct chip8_t *chip8, uint16_t instruction) {
 
 void exec_op_3(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t register_x=get_4_bits(instruction, 3, 1);
-  uint8_t value=get_4_bits(instruction, 2, 2);
+  uint8_t value=get_4_bits(instruction, 1, 2);
   if(chip8->v[register_x] == value) {
     increment_pc(&(chip8->pc), 2);
   }
   else increment_pc(&(chip8->pc), 1);
-  printf("se V%d, %x\n", register_x, value);
+  printf("se V%d, 0x%04X\n", register_x, value);
 }
 
 void exec_op_4(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t register_x=get_4_bits(instruction, 3, 1);
-  uint8_t value=get_4_bits(instruction, 2, 2);
+  uint8_t value=get_4_bits(instruction, 1, 2);
   if(chip8->v[register_x] != value) {
     increment_pc(&(chip8->pc), 2);
   }
   else increment_pc(&(chip8->pc), 1);
-  printf("sne V%d, %x\n", register_x, value);
+  printf("sne V%d, 0x%04X\n", register_x, value);
 }
 
 void exec_op_5(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t register_x=get_4_bits(instruction, 3, 1);
-  uint8_t value=get_4_bits(instruction, 2, 2);
-  printf("sne V%d, %x\n", register_x, value);
+  uint8_t value=get_4_bits(instruction, 1, 2);
+  printf("sne V%d, 0x%04X\n", register_x, value);
 
   if(chip8->v[register_x] != value) {
     increment_pc(&(chip8->pc), 2);
@@ -189,17 +200,17 @@ void exec_op_5(struct chip8_t *chip8, uint16_t instruction) {
 
 void exec_op_6(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t register_x=get_4_bits(instruction, 3, 1);
-  uint8_t value=get_4_bits(instruction, 2, 2);
+  uint8_t value=get_4_bits(instruction, 1, 2);
   chip8->v[register_x]=value;
-  printf("mov V%d, %d\n", register_x, value);
-  increment_pc(&(chip8->pc), 1);
+  printf("ld V%d, 0x%04X\n", register_x, value);
+  increment_pc(&chip8->pc, 1);
 }
 
 void exec_op_7(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t register_x=get_4_bits(instruction, 3, 1);
-  uint8_t value=get_4_bits(instruction, 2, 2);
+  uint8_t value=get_4_bits(instruction, 1, 2);
   chip8->v[register_x]+=value;
-  printf("add V%d, %d\n", register_x, value);
+  printf("add V%d, 0x%04X\n", register_x, value);
   increment_pc(&(chip8->pc), 1);
 }
 
@@ -286,23 +297,63 @@ void exec_op_c(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t random_value=GetRandomValue(0, 255);
   chip8->v[register_x]=random_value & value;
   increment_pc(&(chip8->pc), 1);
-  printf("rnd V%d, %x\n", register_x, random_value);
+  printf("rnd V%d, 0x%04X\n", register_x, random_value);
 }
 
-// TODO
-void exec_op_d(struct chip8_t *chip8, uint16_t instruction) {
-  printf("d\n");
+void exec_op_d(struct chip8_t *const chip8, uint16_t instruction) {
+  uint8_t x_pos=chip8->v[get_4_bits(instruction, 3, 1)], original_x=x_pos;
+  uint8_t y_pos=chip8->v[get_4_bits(instruction, 2, 1)];
+  uint8_t n_bytes=get_4_bits(instruction, 1, 1);
+  uint8_t data[n_bytes];
+  memcpy(data, chip8->ram+chip8->i, n_bytes);
+  for(int i=0; i<n_bytes; ++i) printf("%2x ", data[i]);
+  printf("\n");
+  chip8->v[0x0F]=0;
+  for(int i=0; i<n_bytes; ++i) {
+    x_pos=original_x;
+    for(int k=7; k>=0; --k) {
+      uint8_t bit = (data[i]>>k) & 0x1;
+      uint8_t *bit_on_screen = chip8->frame_buffer+(y_pos*(SCREEN_WIDTH)+x_pos);
+      // Or just xOr but still need to set Vf
+      if(*bit_on_screen == 1 && bit) {
+        chip8->v[0x0F]=1;
+        *bit_on_screen=0;
+      }
+      else if(bit){
+        *bit_on_screen=1;
+      }
+      x_pos+=1;
+      if(x_pos == SCREEN_WIDTH) break;
+    }
+    y_pos+=1;
+    if(y_pos == SCREEN_HEIGHT) break;
+  }
+  printf("drw %d, %d, %x\n", x_pos, y_pos, n_bytes);
+  increment_pc(&chip8->pc, 1);
 }
+
 void exec_op_e(struct chip8_t *chip8, uint16_t instruction) {
-  printf("e\n");
+  uint8_t register_x=get_4_bits(instruction, 3, 1); 
+  uint8_t least_significant_byte=get_4_bits(instruction, 1, 2);
+  switch(least_significant_byte) {
+    case 0x9e:
+      increment_pc(&chip8->pc, chip8->keypad[chip8->v[register_x]] ? 2 : 1);
+      printf("skp V%d\n", register_x);
+      break;
+    case 0xa1:
+      increment_pc(&chip8->pc, !chip8->keypad[chip8->v[register_x]] ? 2 : 1);
+      printf("sknp V%d\n", register_x);
+      break;
+  }
 }
+
 void exec_op_f(struct chip8_t *chip8, uint16_t instruction) {
-  printf("f\n");
+  printf("f instruction\n");
 }
 
 void cycle(struct chip8_t *const chip8) {
-  uint16_t instruction=(chip8->ram[(chip8->pc)]<<((INSTRUCTION_SIZE)/2)) 
-	  | chip8->ram[(chip8->pc)+1];
+  uint16_t instruction=(chip8->ram[(chip8->pc)]<<8)|chip8->ram[(chip8->pc)+1];
+  printf("0x%04X 0x%04X => ", chip8->pc, instruction);
   decode_subroutine routines[16]={
     exec_op_0 ,exec_op_1 ,exec_op_2 ,exec_op_3
     ,exec_op_4 ,exec_op_5 ,exec_op_6 ,exec_op_7
@@ -317,9 +368,12 @@ void cycle(struct chip8_t *const chip8) {
 int main(int argc, char **argv) {
   struct chip8_t chip8;
   boot(&chip8, argv[1]);
-  cycle(&chip8);
-  cycle(&chip8);
-  cycle(&chip8);
-  cycle(&chip8);
-  return EXIT_SUCCESS;
+  init();
+  printf("%d\n", TOTAL_PIXELS);
+  while(!WindowShouldClose()) {
+    cycle(&chip8);
+    WaitTime(0.001667);
+    render(chip8.frame_buffer);
+  }
+  return exit_();
 }
