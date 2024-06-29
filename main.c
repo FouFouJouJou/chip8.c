@@ -84,11 +84,6 @@ size_t read_file(const char *const file_name, uint8_t *buffer) {
   lseek(fd, 0, SEEK_SET);
   ssize_t bytes_read=read(fd, buffer, raw_bytes);
   buffer[bytes_read]='\0';
-  for(int i=0; i<bytes_read; ++i) {
-    if(i % 16 == 0) printf("\n");
-    printf("%2x ", buffer[i]);
-  }
-  printf("\n");
   close(fd);
   return bytes_read;
 }
@@ -133,6 +128,29 @@ void increment_pc(uint16_t *const pc, uint16_t increment) {
 uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
   return (instruction >> ((start_bit-1)*4)) & (0xFFFF >> (4-size)*4);
 }
+
+uint8_t process_input(struct chip8_t *const chip8) {
+  int key=0;
+  char keyboard[17]="1234qwerasdfzxcv";
+  char keypad[17]={
+    0x1, 0x2, 0x3, 0xc
+    ,0x4, 0x5, 0x6, 0xd
+    ,0x7, 0x8, 0x9, 0xe
+    ,0xa, 0x0, 0xb, 0xf
+  };
+
+  for(char i=0; i<strlen(keyboard); ++i) {
+    if(IsKeyDown(keyboard[i])) {
+      chip8->keypad[keypad[i]]=1;
+      key=keypad[i];
+    }
+    else if (IsKeyUp(keyboard[i])) {
+      chip8->keypad[keypad[i]]=0;
+    }
+  }
+  return key;
+}
+
 
 void exec_op_0(struct chip8_t *chip8, uint16_t instruction) {
   uint32_t remainding_bits=get_4_bits(instruction, 1, 3);
@@ -356,7 +374,10 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
       printf("ld V%d, DT\n", register_x);
       break;
     case 0x0a:
-      // TODO: once the input system is set
+      uint8_t key_pressed=-1;
+      while((key_pressed=process_input(chip8)) != -1);
+      chip8->v[register_x]=key_pressed;
+      printf("ld V%d, %d\n", register_x, key_pressed);
       break;
     case 0x15:
       chip8->dt=chip8->v[register_x];
@@ -368,9 +389,10 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
       break;
     case 0x1E:
       chip8->i+=chip8->v[register_x];
+      printf("add I, V%d\n", register_x);
       break;
     case 0x29:
-      chip8->i=chip8->v[register_x];
+      // TODO: bugs to fix
       break;
     case 0x33:
       const uint8_t bcd=chip8->v[register_x];
@@ -382,10 +404,10 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
       chip8->ram[chip8->i+2]=ones;
       break;
     case 0x55:
-      memcpy(chip8->ram+chip8->i, chip8->v, 16);
+      memcpy(chip8->ram+chip8->i, chip8->v, register_x+1);
       break;
     case 0x65:
-      memcpy(chip8->v, chip8->ram+chip8->i, 16);
+      memcpy(chip8->v, chip8->ram+chip8->i, register_x+1);
       break;
   }
   increment_pc(&chip8->pc, 1);
@@ -401,9 +423,6 @@ void cycle(struct chip8_t *const chip8) {
     ,exec_op_c ,exec_op_d ,exec_op_e ,exec_op_f
   };
   routines[get_4_bits(instruction, 4, 1)](chip8, instruction);
-}
-
-void process_input(struct chip8_t *const chip8) {
 }
 
 // TODO: argc and argv checking
