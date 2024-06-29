@@ -1,2 +1,2 @@
 build:
-	gcc main.c -lraylib -o main && ./main roms/test_opcode.ch8
+	gcc main.c -lraylib -o main && ./main $(ROM)

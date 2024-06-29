@@ -1,0 +1,18 @@
+#+TITLE: Chip 8 emulator in C
+** Resouces
+- [[http://devernay.free.fr/hacks/chip8/C8TECH10.HTM][ Chip-8 technical reference]]
+- [[https://www.raylib.com/cheatsheet/cheatsheet.html][ Raylib cheatsheet]]
+** Instructions
+#+BEGIN_SRC bash
+  make ROM=path_to_chip8_rom
+#+END_SRC
+
+* TODO Functionality [3/4]
+  - [x] Instruction set 
+  - [x] Frame buffer and display
+  - [x] Keypad input
+  - [] Rom tested [3/4]
+    - [x] IBM logo
+    - [x] Opcode test
+    - [x] Sqrt
+    - [] games
