@@ -265,7 +265,7 @@ void exec_op_8(struct chip8_t *chip8, uint16_t instruction) {
     case 5:
       chip8->v[0xF]=(chip8->v[register_x]>chip8->v[register_y]);
       chip8->v[register_x]-=chip8->v[register_y];
-      printf("sub V%d, V%d", register_x, register_y);
+      printf("sub V%d, V%d\n", register_x, register_y);
       increment_pc(&(chip8->pc), 1);
       break;
     case 6:
@@ -392,7 +392,8 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
       printf("add I, V%d\n", register_x);
       break;
     case 0x29:
-      // TODO: bugs to fix
+      chip8->i=5*chip8->v[register_x];
+      printf("ld %d, V%d\n", chip8->v[register_x], register_x );
       break;
     case 0x33:
       const uint8_t bcd=chip8->v[register_x];
@@ -402,12 +403,16 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
       chip8->ram[chip8->i]=hundreds;
       chip8->ram[chip8->i+1]=tens;
       chip8->ram[chip8->i+2]=ones;
+      printf("ld %d, V%d\n", bcd, register_x);
       break;
     case 0x55:
       memcpy(chip8->ram+chip8->i, chip8->v, register_x+1);
+      printf("ld [%d], V%d\n", chip8->i, register_x);
       break;
     case 0x65:
       memcpy(chip8->v, chip8->ram+chip8->i, register_x+1);
+      printf("ld V%d, [%d]\n", register_x, chip8->i);
+
       break;
   }
   increment_pc(&chip8->pc, 1);
