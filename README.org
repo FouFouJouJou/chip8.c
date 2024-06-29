@@ -4,7 +4,7 @@
 - [[https://www.raylib.com/cheatsheet/cheatsheet.html][ Raylib cheatsheet]]
 ** Instructions
 #+BEGIN_SRC bash
-  make ROM=path_to_chip8_rom
+  make ROM=path_to_chip8_rom_file
 #+END_SRC
 
 * TODO Functionality [3/4]
