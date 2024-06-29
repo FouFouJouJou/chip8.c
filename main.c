@@ -39,7 +39,7 @@ struct chip8_t {
   //uint8_t *v_regs, *frame_buffer;
 };
 
-typedef void (*decode_subroutine)(struct chip8_t *chip8, uint16_t instruction);
+typedef void (*decode_entry)(struct chip8_t *chip8, uint16_t instruction);
 
 void set_pixel(uint8_t pixels[], uint16_t pos_x, uint16_t pos_y, uint8_t bit) {
   printf("%d %d %d\n", pos_x, pos_y, (pos_y*(PIXELS_PER_ROW))+pos_x);
@@ -421,7 +421,7 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
 void cycle(struct chip8_t *const chip8) {
   uint16_t instruction=(chip8->ram[(chip8->pc)]<<8)|chip8->ram[(chip8->pc)+1];
   printf("0x%04X 0x%04X => ", chip8->pc, instruction);
-  decode_subroutine routines[16]={
+  decode_entry routines[16]={
     exec_op_0 ,exec_op_1 ,exec_op_2 ,exec_op_3
     ,exec_op_4 ,exec_op_5 ,exec_op_6 ,exec_op_7
     ,exec_op_8 ,exec_op_9 ,exec_op_a ,exec_op_b
