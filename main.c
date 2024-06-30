@@ -130,7 +130,7 @@ uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
 }
 
 uint8_t process_input(struct chip8_t *const chip8) {
-  int key=0;
+  int key=-1;
   char keyboard[17]="1234qwerasdfzxcv";
   char keypad[17]={
     0x1, 0x2, 0x3, 0xc
