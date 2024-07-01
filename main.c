@@ -430,7 +430,6 @@ void cycle(struct chip8_t *const chip8) {
   routines[get_4_bits(instruction, 4, 1)](chip8, instruction);
 }
 
-// TODO: argc and argv checking
 int main(int argc, char **argv) {
   struct chip8_t chip8;
   if(argc != 2) {
