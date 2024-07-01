@@ -433,6 +433,9 @@ void cycle(struct chip8_t *const chip8) {
 // TODO: argc and argv checking
 int main(int argc, char **argv) {
   struct chip8_t chip8;
+  if(argc != 2) {
+    exit(68);
+  }
   boot(&chip8, argv[1]);
   init();
   printf("%d\n", TOTAL_PIXELS);
