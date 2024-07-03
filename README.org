@@ -7,7 +7,7 @@
   make ROM=path_to_chip8_rom_file
 #+END_SRC
 
-* TODO Functionality [3/4]
+* TODO Functionality [3/5]
   - [x] Instruction set 
   - [x] Frame buffer and display
   - [x] Keypad input
@@ -16,3 +16,4 @@
     - [x] Opcode test
     - [x] Sqrt
     - [] games
+  - [] Audio & Timer
