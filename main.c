@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include <raylib.h>
+#include "raylib.h"
 
 #define ORG 0x200
 
@@ -433,6 +433,7 @@ void cycle(struct chip8_t *const chip8) {
 int main(int argc, char **argv) {
   struct chip8_t chip8;
   if(argc != 2) {
+    fprintf(stderr, "[ERROR] no rom file was specified\n");
     exit(68);
   }
   boot(&chip8, argv[1]);
