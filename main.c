@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include "raylib.h"
+#include <raylib.h>
 
 #define ORG 0x200
 
@@ -132,14 +132,14 @@ uint16_t get_4_bits(uint16_t instruction, uint8_t start_bit, uint8_t size) {
 uint8_t process_input(struct chip8_t *const chip8) {
   int key=-1;
   char keyboard[17]="1234qwerasdfzxcv";
-  char keypad[17]={
+  uint8_t keypad[17]={
     0x1, 0x2, 0x3, 0xc
     ,0x4, 0x5, 0x6, 0xd
     ,0x7, 0x8, 0x9, 0xe
     ,0xa, 0x0, 0xb, 0xf
   };
 
-  for(char i=0; i<strlen(keyboard); ++i) {
+  for(size_t i=0; i<strlen(keyboard); ++i) {
     if(IsKeyDown(keyboard[i])) {
       chip8->keypad[keypad[i]]=1;
       key=keypad[i];
@@ -235,57 +235,58 @@ void exec_op_8(struct chip8_t *chip8, uint16_t instruction) {
   uint8_t register_x=get_4_bits(instruction, 3, 1);
   uint8_t register_y=get_4_bits(instruction, 2, 1);
   switch(least_significant_4_bits) {
-    case 0:
-      chip8->v[register_x]=chip8->v[register_y];
-      printf("ld V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 1:
-      chip8->v[register_x]|=chip8->v[register_y];
-      printf("or V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 2:
-      chip8->v[register_x]&=chip8->v[register_y];
-      printf("and V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 3:
-      chip8->v[register_x]^=chip8->v[register_y];
-      printf("xor V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 4:
-      uint16_t result=chip8->v[register_x]+chip8->v[register_y];
-      chip8->v[0xF]=(result>255);
-      chip8->v[register_x]=result;
-      printf("add V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 5:
-      chip8->v[0xF]=(chip8->v[register_x]>chip8->v[register_y]);
-      chip8->v[register_x]-=chip8->v[register_y];
-      printf("sub V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 6:
-      chip8->v[0xF]=(chip8->v[register_x] & 0x1);
-      chip8->v[register_x]>>=1;
-      printf("shr V%d(%d)\n", register_x, chip8->v[register_x]);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 7:
-      chip8->v[0xF]=(chip8->v[register_y]>chip8->v[register_x]);
-      chip8->v[register_x]=chip8->v[register_y]-chip8->v[register_x];
-      printf("subn V%d, V%d\n", register_x, register_y);
-      increment_pc(&(chip8->pc), 1);
-      break;
-    case 0xe:
-      chip8->v[0xF]=chip8->v[register_x] & (1 << 7);
-      chip8->v[register_x]<<=1;
-      printf("shl V%d\n", register_x);
-      increment_pc(&(chip8->pc), 1);
-      break;
+  case 0:
+    chip8->v[register_x]=chip8->v[register_y];
+    printf("ld V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 1:
+    chip8->v[register_x]|=chip8->v[register_y];
+    printf("or V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 2:
+    chip8->v[register_x]&=chip8->v[register_y];
+    printf("and V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 3:
+    chip8->v[register_x]^=chip8->v[register_y];
+    printf("xor V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 4: {
+    uint16_t result=chip8->v[register_x]+chip8->v[register_y];
+    chip8->v[0xF]=(result>255);
+    chip8->v[register_x]=result;
+    printf("add V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  }
+  case 5:
+    chip8->v[0xF]=(chip8->v[register_x]>chip8->v[register_y]);
+    chip8->v[register_x]-=chip8->v[register_y];
+    printf("sub V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 6:
+    chip8->v[0xF]=(chip8->v[register_x] & 0x1);
+    chip8->v[register_x]>>=1;
+    printf("shr V%d(%d)\n", register_x, chip8->v[register_x]);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 7:
+    chip8->v[0xF]=(chip8->v[register_y]>chip8->v[register_x]);
+    chip8->v[register_x]=chip8->v[register_y]-chip8->v[register_x];
+    printf("subn V%d, V%d\n", register_x, register_y);
+    increment_pc(&(chip8->pc), 1);
+    break;
+  case 0xe:
+    chip8->v[0xF]=chip8->v[register_x] & (1 << 7);
+    chip8->v[register_x]<<=1;
+    printf("shl V%d\n", register_x);
+    increment_pc(&(chip8->pc), 1);
+    break;
   }
 }
 
@@ -369,51 +370,53 @@ void exec_op_f(struct chip8_t *const chip8, const uint16_t instruction) {
   const uint8_t least_significant_byte = get_4_bits(instruction, 1, 2);
   const uint8_t register_x = get_4_bits(instruction, 3, 1);
   switch(least_significant_byte) {
-    case 0x07:
-      chip8->v[register_x]=chip8->dt;
-      printf("ld V%d, DT\n", register_x);
-      break;
-    case 0x0a:
-      uint8_t key_pressed=-1;
-      while((key_pressed=process_input(chip8)) != -1);
-      chip8->v[register_x]=key_pressed;
-      printf("ld V%d, %d\n", register_x, key_pressed);
-      break;
-    case 0x15:
-      chip8->dt=chip8->v[register_x];
-      printf("ld DT, V%d\n", register_x);
-      break;
-    case 0x18:
-      chip8->st=chip8->v[register_x];
-      printf("ld ST, V%d\n", register_x);
-      break;
-    case 0x1E:
-      chip8->i+=chip8->v[register_x];
-      printf("add I, V%d\n", register_x);
-      break;
-    case 0x29:
-      chip8->i=5*chip8->v[register_x];
-      printf("ld %d, V%d\n", chip8->v[register_x], register_x );
-      break;
-    case 0x33:
-      const uint8_t bcd=chip8->v[register_x];
-      const uint8_t hundreds=(bcd/100);
-      const uint8_t tens=(bcd%100)/10;
-      const uint8_t ones=(bcd%10);
-      chip8->ram[chip8->i]=hundreds;
-      chip8->ram[chip8->i+1]=tens;
-      chip8->ram[chip8->i+2]=ones;
-      printf("ld %d, V%d\n", bcd, register_x);
-      break;
-    case 0x55:
-      memcpy(chip8->ram+chip8->i, chip8->v, register_x+1);
-      printf("ld [%d], V%d\n", chip8->i, register_x);
-      break;
-    case 0x65:
-      memcpy(chip8->v, chip8->ram+chip8->i, register_x+1);
-      printf("ld V%d, [%d]\n", register_x, chip8->i);
+  case 0x07:
+    chip8->v[register_x]=chip8->dt;
+    printf("ld V%d, DT\n", register_x);
+    break;
+  case 0x0a: {
+    int8_t key_pressed=-1;
+    while((key_pressed=process_input(chip8)) != -1);
+    chip8->v[register_x]=key_pressed;
+    printf("ld V%d, %d\n", register_x, key_pressed);
+    break;
+  }
+  case 0x15:
+    chip8->dt=chip8->v[register_x];
+    printf("ld DT, V%d\n", register_x);
+    break;
+  case 0x18:
+    chip8->st=chip8->v[register_x];
+    printf("ld ST, V%d\n", register_x);
+    break;
+  case 0x1E:
+    chip8->i+=chip8->v[register_x];
+    printf("add I, V%d\n", register_x);
+    break;
+  case 0x29:
+    chip8->i=5*chip8->v[register_x];
+    printf("ld %d, V%d\n", chip8->v[register_x], register_x );
+    break;
+  case 0x33: {
+    const uint8_t bcd=chip8->v[register_x];
+    const uint8_t hundreds=(bcd/100);
+    const uint8_t tens=(bcd%100)/10;
+    const uint8_t ones=(bcd%10);
+    chip8->ram[chip8->i]=hundreds;
+    chip8->ram[chip8->i+1]=tens;
+    chip8->ram[chip8->i+2]=ones;
+    printf("ld %d, V%d\n", bcd, register_x);
+    break;
+  }
+  case 0x55:
+    memcpy(chip8->ram+chip8->i, chip8->v, register_x+1);
+    printf("ld [%d], V%d\n", chip8->i, register_x);
+    break;
+  case 0x65:
+    memcpy(chip8->v, chip8->ram+chip8->i, register_x+1);
+    printf("ld V%d, [%d]\n", register_x, chip8->i);
 
-      break;
+    break;
   }
   increment_pc(&chip8->pc, 1);
 }
@@ -430,10 +433,15 @@ void cycle(struct chip8_t *const chip8) {
   routines[get_4_bits(instruction, 4, 1)](chip8, instruction);
 }
 
+void help() {
+  printf("Help: ./main <path_to_rom_file>.ch8\n");
+}
+
 int main(int argc, char **argv) {
   struct chip8_t chip8;
   if(argc != 2) {
     fprintf(stderr, "[ERROR] no rom file was specified\n");
+    help();
     exit(68);
   }
   boot(&chip8, argv[1]);

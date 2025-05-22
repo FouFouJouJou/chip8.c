@@ -1,2 +1,3 @@
+options = -Wall -Wextra -Wpedantic -Werror -g
 build:
-	gcc main.c -lraylib -o main && ./main $(ROM)
+	gcc $(options) -lraylib main.c -o main
