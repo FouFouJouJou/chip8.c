@@ -1,8 +1,8 @@
 #+TITLE: Chip 8 emulator in C
 Emulating[[https://en.wikipedia.org/wiki/CHIP-8][ Chip-8]], widely considered the entry-level as far as emulator programs go.
 ** Resouces
-- [[http://devernay.free.fr/hacks/chip8/C8TECH10.HTM][ Chip-8 technical reference]]
-- [[https://www.raylib.com/cheatsheet/cheatsheet.html][ Raylib cheatsheet]]
+- [[http://devernay.free.fr/hacks/chip8/C8TECH10.HTM][Chip-8 technical reference]]
+- [[https://www.raylib.com/cheatsheet/cheatsheet.html][Raylib cheatsheet]]
 ** Instructions
 #+BEGIN_SRC bash
   make ROM=path_to_chip8_rom_file
