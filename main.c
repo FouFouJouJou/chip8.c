@@ -33,7 +33,7 @@ struct chip8_t {
   uint8_t ram[1<<12];
   uint8_t frame_buffer[SCREEN_HEIGHT*SCREEN_WIDTH];
   uint8_t keypad[16];
-  //uint16_t *i, *pc, *stack; 
+  //uint16_t *i, *pc, *stack;
   //uint8_t *sp, *dt, *st;
   //uint16_t *v1, *v2, *v3, *v4, *v5, *v6, *v7, *v8, *v9, *va, *vb, *vc, *vd, *ve, *vf;
   //uint8_t *v_regs, *frame_buffer;
