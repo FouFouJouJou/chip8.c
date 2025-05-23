@@ -6,7 +6,8 @@ Emulating[[https://en.wikipedia.org/wiki/CHIP-8][ Chip-8]], widely considered th
 ** Instructions
 Running the project requires raylib to be installed system-wide. I will add documentation at some point to make it local.
 #+BEGIN_SRC bash
-  make ROM=<path_to_chip8_rom_file>
+  make
+  ./main <path_to_chip8_rom_file>
 #+END_SRC
 
 ** TODO Functionality [3/5]
